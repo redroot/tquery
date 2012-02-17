@@ -964,9 +964,19 @@ tQuery.pluginsOn(tQuery, tQuery);
 
 tQuery.mixinAttributes	= function(dstObject, properties){
 	dstObject.prototype.attr	= function(name, value){
+		// handle parameters
+		if( name instanceof Object && value === undefined ){
+			Object.keys(name).forEach(function(key){
+				this.attr(key, name[key]);
+			}.bind(this));
+		}else if( typeof(name) === 'string' ){
+			console.assert( Object.keys(properties).indexOf(name) !== -1, 'invalid property name:'+name);
+		}else	console.assert(false, 'invalid parameter');
+
 		// handle setter
 		if( value !== undefined ){
-			console.log("name", name, value);
+			var convertFn	= properties[name];
+			value		= convertFn(value);
 			this.each(function(element){
 				element[name]	= value;
 			})
@@ -976,14 +986,14 @@ tQuery.mixinAttributes	= function(dstObject, properties){
 		if( this.length === 0 )	return undefined
 		var element	= this.get(0);
 		return element[name];
-	}
+	};
 
 	// add shortcuts
 	Object.keys(properties).forEach(function(name){
 		dstObject.prototype[name]	= function(value){
 			return this.attr(name, value);
 		};
-	});
+	}.bind(this));
 };/**
  * implementation of the tQuery.Node
  *
@@ -1311,7 +1321,13 @@ tQuery.Object3D._removeClassOne	= function(object3d, className){
 tQuery.Object3D._select	= function(selector, root){
 	root		= root	|| tQuery.world.scene();
 	var selectItems	= selector.split(' ').filter(function(v){ return v.length > 0;})
-	var lists	= this._crawls(root, selectItems)
+
+	var lists	= [];	
+	root.children.forEach(function(child){
+		var nodes	= this._crawls(child, selectItems);
+		// FIXME reallocate the array without need
+		lists		= lists.concat(nodes);
+	}.bind(this));	
 	return lists;
 }
 
@@ -1443,7 +1459,38 @@ tQuery.inherit(tQuery.Material, tQuery.Node);
 /**
  * Make it pluginable
 */
-tQuery.pluginsInstanceOn(tQuery.Material);/**
+tQuery.pluginsInstanceOn(tQuery.Material);tQuery.convert	= {};
+
+/**
+ * Convert the value into a THREE.Color object
+ * 
+ * @return {THREE.Color} the resulting color
+*/
+tQuery.convert.toThreeColor	= function(value){
+	if( arguments.length === 1 && typeof(value) === 'number'){
+		return new THREE.Color(value);
+	}else if( arguments.length === 1 && value instanceof THREE.Color ){
+		return value;
+	}else{
+		console.assert(false, "invalid parameter");
+	}
+	return undefined;	// never reached - just to workaround linter complaint
+};
+
+tQuery.convert.toNumber	= function(value){
+	if( arguments.length === 1 && typeof(value) === 'number'){
+		return value;
+	}else{
+		console.assert(false, "invalid parameter");
+	}
+	return undefined;	// never reached - just to workaround linter complaint
+};
+
+tQuery.convert.identity	= function(value){
+	return value;
+};
+
+/**
  * Handle light
  *
  * @class include THREE.Light. It inherit from {@link tQuery.Node}
@@ -1478,7 +1525,7 @@ tQuery.pluginsInstanceOn(tQuery.Light);
  * define all acceptable attributes for this class
 */
 tQuery.mixinAttributes(tQuery.Light, {
-	color	: true
+	color	: tQuery.convert.toThreeColor
 });
 
 
@@ -2077,8 +2124,8 @@ tQuery.pluginsInstanceOn(tQuery.DirectionalLight);
  * define all acceptable attributes for this class
 */
 tQuery.mixinAttributes(tQuery.DirectionalLight, {
-	intensity	: true,
-	distance	: true
+	intensity	: tQuery.convert.toNumber,
+	distance	: tQuery.convert.toNumber
 });
 
 

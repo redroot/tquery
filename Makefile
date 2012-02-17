@@ -33,6 +33,7 @@ buildPlain:
 	cat js/tquery.object3d.js	>> build/tquery.js
 	cat js/tquery.geometry.js	>> build/tquery.js
 	cat js/tquery.material.js	>> build/tquery.js
+	cat js/tquery.convert.js	>> build/tquery.js
 	cat js/tquery.light.js		>> build/tquery.js
 	cat js/tquery.mesh.js		>> build/tquery.js
 	cat js/tquery.world.js		>> build/tquery.js
